@@ -18,6 +18,11 @@ typedef struct {
 }TickFont;
 
 
+#ifdef __cplusplus
+extern "C"{
+#endif
+
+
 
 void SetDefaultFont(TickFont* font);
 TickFont GetDefaultFont();
@@ -108,5 +113,10 @@ void DrawTextSegmentExtendedFontSize_ctx(const char* text,u32 size , int x , int
 					u32 w , u32 h,
 					u32 xpadd, u32 ypadd ,Vec4c cl ,
 					TickFont font,TickContext* ctx);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -82,6 +82,13 @@ typedef struct {
 	u32 index , w , h , bpp;
 }TickTexture2D;
 
+
+#ifdef __cplusplus
+extern "C"{  //To C++ or not to C++, that is the quation
+#endif
+
+
+
 /***************************Tick stuff******************************/
 TickContext TickInit(GLFWwindow* window);
 TickContext*GetDefaultContext();
@@ -121,6 +128,10 @@ char IsKeyPressed_ctx(u32 k,TickContext* ctx);
 
 
 /*************************** Scaling ******************************/
+
+
+
+
 void SetScaleX(float scale);
 void SetScaleY(float scale);
 void SetScaleXY( float scalex, float scaley);
@@ -226,5 +237,10 @@ void ReloadTexture(TickTexture2D *texture, void* data,u32 w , u32 h , u32 bpp );
 void ReloadTexture_ctx         (TickTexture2D* texture, void* data,u32 w , u32 h , u32 bpp , TickContext* ctx);
 void ReloadTextureFromeFile_ctx(TickTexture2D* texture, const char* fileName, TickContext* ctx);
 void RemoveTexture_ctx         (TickTexture2D* texture, TickContext* ctx);
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

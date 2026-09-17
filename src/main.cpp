@@ -7,7 +7,14 @@
 #endif
 
 #include <GLFW/glfw3.h>
+
 #include "../ticktackto/include/tick-tack-to.h"
+/*
+#include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/videoio.hpp>
+#include <opencv2/highgui.hpp>
+*/
 
 int main(){
         if(!glfwInit()){
@@ -22,8 +29,6 @@ int main(){
 
 	TickInit(window); //And the
 
-
-	char FPS[100];
 
 	char check=0;
 	float slid=0.0;
@@ -48,6 +53,4 @@ int main(){
 	}
 
 	glfwTerminate();
-
-
 }

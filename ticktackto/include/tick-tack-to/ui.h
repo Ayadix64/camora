@@ -28,6 +28,12 @@ typedef struct {
 	char* data;
 }TextBoxData;
 
+
+
+#ifdef __cplusplus
+extern "C"{
+#endif
+
 void ResetDefaultUIColors();
 void SetDefaultUIColors(Vec4c dbg, Vec4c hc, Vec4c sc , Vec4c fc);
 
@@ -74,5 +80,11 @@ char Slider          (int x , int y , int w,  float* s);
 char Slider_ctx      (int x , int y , int w,  float* s ,TickContext* ctx);
 char SliderColor     (int x , int y , int w,  float* s ,Vec4c dbg, Vec4c hbg, Vec4c sbg);
 char SliderColor_ctx (int x , int y , int w,  float* s ,Vec4c dbg, Vec4c hbg, Vec4c sbg , TickContext* ctx);
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
