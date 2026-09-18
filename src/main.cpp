@@ -1,4 +1,7 @@
+#include <atomic>
+#include <pthread.h>
 #include <stdio.h>
+#include <thread>
 
 
 #ifndef GLAD_GL_IMPLEMENTATION
@@ -21,6 +24,25 @@
 #include <opencv2/highgui.hpp>*/
 #define min(x,y) x>y?y:x
 #define max(x,y) x>y?x:y
+#define pos_or_zeor(x) x<0?0:x
+
+
+void *imagebuffer = NULL;
+
+void captureThread(cv::Mat* frame, cv::VideoCapture* cap, pthread_mutex_t* capmutex,std::atomic_bool* sholdclose) //it runs on sepret thread to smooth the main window
+{
+        while(!*sholdclose){
+                pthread_mutex_lock(capmutex);
+                cap->read(*frame);
+                cv::cvtColor(*frame, *frame,cv::COLOR_BGR2RGB);
+
+        	if (frame->empty()) {
+        	        printf("ERROR! blank frame grabbed\n");
+        	}
+                pthread_mutex_unlock(capmutex);
+        }
+
+}
 
 
 
@@ -47,7 +69,8 @@ int main(){
 	int camera = 0;
 	cv::Mat frame;
 	cv::VideoCapture cap;
-
+	pthread_mutex_t capmutex;
+	std::atomic_bool sholdclose=false;
 	cap.open(camera);
 	if (!cap.isOpened()) {
 	        return -1;
@@ -63,8 +86,9 @@ int main(){
 	        printf("ERROR! blank frame grabbed\n");
 	}
 
-	TickTexture2D videotexture = LoadTexture(frame.data, frame.cols, frame.rows, 24);
+	TickTexture2D videotexture = LoadTexture(frame.data, frame.cols, frame.rows, 3);
 
+	std::thread(captureThread,&frame, &cap, &capmutex, &sholdclose).detach();
 
 	while(!glfwWindowShouldClose(window) ){
 		TickNewFrame();//you have to call this in evry frime; or you will have a bed time!
@@ -73,28 +97,26 @@ int main(){
 		DrawText("Hello World!, World Hello! , whozl[fkgopjg]", 300, 20,(Vec4c){255,255,255,255});
 		CheckBox("Check Box Bora Broa Broa .", 20, 300, (char*)&check);
 
-		cap.read(frame);
-			// check if we succeeded
-		if (frame.empty()) {
-		        printf("ERROR! blank frame grabbed\n");
-		}
-		//cv::cvtColor(frame, frame,cv::COLOR_BGR2RGB);
+
 		ReloadTexture(&videotexture, frame.data, frame.cols, frame.rows, 3);
 		float frameHdem = (float)frame.cols/(float)frame.rows;
-		DrawTexture(videotexture, (float)0,
-	                                  (float)0,
-					min(GetWindowW()*frameHdem,GetWindowH())*frameHdem,
-					min(GetWindowW(),GetWindowH()/frameHdem)
+		float w = min((float)GetWindowW(),(float)GetWindowH()*frameHdem);
+		float h = min(w/frameHdem,GetWindowW());
+		DrawTexture(videotexture, (float)pos_or_zeor((GetWindowW()-w)/2.0),
+	                                  (float)pos_or_zeor((GetWindowH()-h)/2.0),
+					w,
+					h
 		);
 		/******************** Render ********************/
 		DrawCircle(GetWindowW() / 2,GetWindowH() - 40, 30, 360, {245,245,240,255});
-
 		TickRendre(); /*render our Tick data*/
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //clering up our screen
 		tflf=glfwGetTime () ;
 	}
+	//sholdclose=true;
 
 	glfwTerminate();
 }
