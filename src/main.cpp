@@ -1,4 +1,5 @@
 #include <atomic>
+#include <cstring>
 #include <pthread.h>
 #include <stdio.h>
 #include <thread>
@@ -29,17 +30,26 @@
 
 void *imagebuffer = NULL;
 
-void captureThread(cv::Mat* frame, cv::VideoCapture* cap, pthread_mutex_t* capmutex,std::atomic_bool* sholdclose) //it runs on sepret thread to smooth the main window
+void captureThread( void* buff,
+                    pthread_mutex_t* buffmut,
+                    cv::VideoCapture* cap,
+                    pthread_mutex_t* capmutex,
+                    std::atomic_bool* sholdclose) //it runs on sepret thread to smooth the main window
 {
+        cv::Mat frame;
         while(!*sholdclose){
                 pthread_mutex_lock(capmutex);
-                cap->read(*frame);
-                cv::cvtColor(*frame, *frame,cv::COLOR_BGR2RGB);
+                cap->read(frame);
+                cv::cvtColor(frame, frame,cv::COLOR_BGR2RGB);
 
-        	if (frame->empty()) {
+        	if (frame.empty()) {
         	        printf("ERROR! blank frame grabbed\n");
         	}
                 pthread_mutex_unlock(capmutex);
+
+                //pthread_mutex_lock(buffmut);
+                memcpy(buff, frame.data, frame.rows*frame.cols*3);
+                //pthread_mutex_unlock(buffmut);
         }
 
 }
@@ -71,6 +81,8 @@ int main(){
 	cv::VideoCapture cap;
 	pthread_mutex_t capmutex;
 	std::atomic_bool sholdclose=false;
+	pthread_mutex_init(&capmutex, NULL);
+
 	cap.open(camera);
 	if (!cap.isOpened()) {
 	        return -1;
@@ -81,6 +93,10 @@ int main(){
 
 	cv::cvtColor(frame, frame,cv::COLOR_BGR2RGB);
 
+	void* buff = malloc(frame.rows*frame.cols*3);
+	pthread_mutex_t buffmut;
+	pthread_mutex_init(&buffmut, NULL);
+
 	// check if we succeeded
 	if (frame.empty()) {
 	        printf("ERROR! blank frame grabbed\n");
@@ -88,17 +104,14 @@ int main(){
 
 	TickTexture2D videotexture = LoadTexture(frame.data, frame.cols, frame.rows, 3);
 
-	std::thread(captureThread,&frame, &cap, &capmutex, &sholdclose).detach();
+
+	std::thread(captureThread,buff,&buffmut ,&cap, &capmutex, &sholdclose).detach();
 
 	while(!glfwWindowShouldClose(window) ){
 		TickNewFrame();//you have to call this in evry frime; or you will have a bed time!
-
-
-		DrawText("Hello World!, World Hello! , whozl[fkgopjg]", 300, 20,(Vec4c){255,255,255,255});
-		CheckBox("Check Box Bora Broa Broa .", 20, 300, (char*)&check);
-
-
-		ReloadTexture(&videotexture, frame.data, frame.cols, frame.rows, 3);
+		//pthread_mutex_lock(&buffmut);
+		ReloadTexture(&videotexture, buff, frame.cols, frame.rows, 3);
+		//pthread_mutex_unlock(&buffmut);
 		float frameHdem = (float)frame.cols/(float)frame.rows;
 		float w = min((float)GetWindowW(),(float)GetWindowH()*frameHdem);
 		float h = min(w/frameHdem,GetWindowW());
@@ -117,6 +130,6 @@ int main(){
 		tflf=glfwGetTime () ;
 	}
 	//sholdclose=true;
-
+	free(buff);
 	glfwTerminate();
 }
