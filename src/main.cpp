@@ -72,7 +72,7 @@ bool snapButton(void)
         static double snaptimer = 0.0;
         const float animationduration = 0.1*(1.0/parameters.animationSpeed);
         bool isClicked = false;
-        float x  = GetWindowW()/2.0, y = GetWindowH() -40;
+        float x  = GetWindowW()/2.0, y = GetWindowH() -50;
 
         if( (cube(GetMousePos().x - x) +  cube(GetMousePos().y -y)) < 30* 30){
                 if(!isHover)snaptimer = glfwGetTime();
@@ -109,6 +109,10 @@ bool Menu(void){
         static int goUp= 0.0; //up ? down?
         static float y = GetWindowH();
         static TextBoxData tbd={0};
+        static float dim = 0.0;
+        if(dim==0.0){
+                dim = parameters.dim/2;
+        }
         if(!tbd.data){
                 InitTextBoxData(&tbd, 0);
                 tbd.flags.EnbleCharctures=0;
@@ -128,8 +132,10 @@ bool Menu(void){
                         DrawText("Camera Number, will, is a number", 20+w+60+20, yy+30, {255,165,0,255});
                 }
                 if(tbd.size){
-
+                        parameters.defCamera = atoi(tbd.data);
                 }
+                Slider(20, yy+80, 200, &dim);
+                parameters.dim = dim*2.0;
         }
         if(glfwGetTime() > animationEnd && animationEnd > 0.0){
                 animationEnd=0.0;
@@ -257,12 +263,13 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //clering up our screen
 		tflf=glfwGetTime () ;
 	}
+
+	SetParameters();
 	sholdclose=true;
 	if(capthr.joinable()){
 	        capthr.join();
 	}
 	free(buff);
 	glfwTerminate();
-	SetParameters();
 	return 0;
 }
