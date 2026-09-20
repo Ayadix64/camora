@@ -1,3 +1,4 @@
+#define MAIN
 #include "conf.hpp"
 #include <atomic>
 #include <cmath>
@@ -23,26 +24,24 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
 
-#define min(x,y) x>y?y:x
-#define max(x,y) x>y?x:y
-#define pos_or_zeor(x) x<0?0:x
-#define cube(x) (x)*(x) // yeah..
-#define CONFIG_FILE "camora.conf"
+#include "utils.h"
+#include "fonts/opensens.h"
 
 struct {
         u32 defCamera = 0;
         float dim = 1.0;
         float animationSpeed = 1.0;
+        std::string pictorsLocation = "./";
 } parameters;
 
 
-void *imagebuffer = NULL;
 
 void captureThread( void* buff,
                     pthread_mutex_t* buffmut,
                     cv::VideoCapture* cap,
                     pthread_mutex_t* capmutex,
-                    std::atomic_bool* sholdclose) //it runs on sepret thread to smooth the main window
+                    std::atomic_bool* sholdclose,
+                    cv::Mat* _frame) //it runs on sepret thread to smooth the main window
 {
         cv::Mat frame;
         while(!*sholdclose){
@@ -54,9 +53,12 @@ void captureThread( void* buff,
         	        printf("ERROR! blank frame grabbed\n");
         	}
                 pthread_mutex_unlock(capmutex);
-
+                for(int i = 0 ; i < frame.rows * frame.cols * 3; ++i ){
+                        frame.data[i]*= parameters.dim;
+                }
                 pthread_mutex_lock(buffmut);
-                memcpy(buff, frame.data, frame.rows*frame.cols*3);
+                memcpy(buff, frame.data, frame.cols*frame.rows*3);
+                *_frame = frame;
                 pthread_mutex_unlock(buffmut);
         }
         return;
@@ -98,29 +100,51 @@ bool snapButton(void)
         return isClicked;
 }
 
-void Menu(void){
+bool Menu(void){
         static bool showMenu = false;
-        const  double animationDur = 0.2f* (1.0f/parameters.animationSpeed);
+        const  double animationDur = 0.1f* (1.0f/parameters.animationSpeed);
         static double animationEnd = 0.0;
+        static double CamWarningTimeUp = 0.0;
+
         static int goUp= 0.0; //up ? down?
         static float y = GetWindowH();
-
-        if(showMenu || animationEnd > glfwGetTime() ){
-                DrawRoundedRectangel(0 ,(float)GetWindowH()- y*(4*(float)GetWindowH()/5), GetWindowW(), GetWindowH() , 30, 36, {25,25,30,255});
+        static TextBoxData tbd={0};
+        if(!tbd.data){
+                InitTextBoxData(&tbd, 0);
+                tbd.flags.EnbleCharctures=0;
         }
-        if(glfwGetTime() >= animationEnd && animationEnd > 0.0){
+        if(showMenu || animationEnd > glfwGetTime() ){
+                float yy = (float)GetWindowH()- y*(4*(float)GetWindowH()/5);
+                DrawRoundedRectangel(0 ,yy, GetWindowW(), GetWindowH() , 30, 36, {20,20,25,255});
+                DrawText("camera#: ", 20,yy + 30 , {255,255,255,255});
+                u32 w ;
+                GetTextDemensions("camera#: ", &w, 0);
+                if(TextBoxColor(20+w, yy+30-15, 60, 0, &tbd, {15,15,15,255}, {25,25,25,255}, {25,25,25,255}, {200,200,240,255}, {255,255,255,255})
+                        == TEXTBOX_ERR_NOTALLOWED )
+                {
+                        CamWarningTimeUp = glfwGetTime() + 2.0;
+                }
+                if(CamWarningTimeUp > glfwGetTime()){
+                        DrawText("Camera Number, will, is a number", 20+w+60+20, yy+30, {255,165,0,255});
+                }
+                if(tbd.size){
+
+                }
+        }
+        if(glfwGetTime() > animationEnd && animationEnd > 0.0){
                 animationEnd=0.0;
         }else if(animationEnd>0.0){
                 y = (1.0f/animationDur)*(goUp?animationDur-(animationEnd-glfwGetTime()) : (animationEnd-glfwGetTime()));
         }
-
-        if(Button("Menu", 20 ,GetWindowH() - 50, 0, 0)&1){
+        if(ButtonColor("Menu", 20 ,GetWindowH() - 50, 0, 0,{15,15,15,255},{25,25,25,255},{25,25,25,255},{255,255,255,255})&1){
                showMenu = !showMenu;
                goUp= showMenu?1.0:0.0;
                animationEnd = glfwGetTime() + animationDur;
         }
+        return showMenu;
         //animation , privded by trust me bro fondation
 }
+
 
 
 void getParameters(void)
@@ -136,21 +160,26 @@ void getParameters(void)
                 parameters.animationSpeed = atof(conf.c_str());
         }
 
+        if(readConf(CONFIG_FILE, "pictors", conf) ){
+                parameters.pictorsLocation = conf;
+        }
 }
+
+
 void SetParameters(void)
 {
-
-        std::string conf;
         writeConf(CONFIG_FILE, "camera", std::to_string(parameters.defCamera));
-
         writeConf(CONFIG_FILE, "dim", std::to_string(parameters.dim));
-
         writeConf(CONFIG_FILE, "animation", std::to_string(parameters.animationSpeed));
-
-
+        writeConf(CONFIG_FILE, "pictors", parameters.pictorsLocation);
 }
 
-int main(){
+
+
+// absolotly nothing better than mistryes uncomented code
+
+int main()
+{
         if(!glfwInit()){
 		return 1;
 	}
@@ -164,11 +193,13 @@ int main(){
 	TickInit(window); //And the
 	getParameters();
 
+
 	char check=0;
 	float slid=0.0;
 	double tflf = glfwGetTime();
 
-
+	TickFont opensensfont =  LoadFontMem((void*)font, sizeof(font), 20);
+	SetDefaultFont(&opensensfont);
 
 	int camera = 0;
 	cv::Mat frame;
@@ -181,7 +212,6 @@ int main(){
 	if (!cap.isOpened()) {
 	        return -1;
 	}
-	// wait for a new frame from camera and store it into 'frame'
 
 	cap.read(frame);
 
@@ -191,7 +221,6 @@ int main(){
 	pthread_mutex_t buffmut;
 	pthread_mutex_init(&buffmut, NULL);
 
-	// check if we succeeded
 	if (frame.empty()) {
 	        printf("ERROR! blank frame grabbed\n");
 	}
@@ -199,10 +228,11 @@ int main(){
 	TickTexture2D videotexture = LoadTexture(frame.data, frame.cols, frame.rows, 3);
 
 
-	std::thread capthr= std::thread(captureThread,buff,&buffmut ,&cap, &capmutex, &sholdclose);
+	std::thread capthr= std::thread(captureThread,buff,&buffmut ,&cap, &capmutex, &sholdclose,&frame);
 
 	while(!glfwWindowShouldClose(window) ){
-		TickNewFrame();//you have to call this in evry frime; or you will have a bed time!
+		TickNewFrame();
+
 		pthread_mutex_lock(&buffmut);
 		ReloadTexture(&videotexture, buff, frame.cols, frame.rows, 3);
 		pthread_mutex_unlock(&buffmut);
@@ -214,8 +244,12 @@ int main(){
 					w,
 					h
 		);
-		snapButton();
-		Menu();
+		if(snapButton() && !Menu())
+		{
+
+		}else{
+		        Menu();
+		}
 
 		TickRendre();
 		glfwSwapBuffers(window);

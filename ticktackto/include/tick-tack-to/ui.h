@@ -9,11 +9,13 @@
 #define UI_DEFAULT_SELECT_COLOR     (Vec4c){0x20,0x41,0xe8,255} //#2041e8
 #define UI_DEFAULT_FONT_COLOR       (Vec4c){0xff,0xff,0xff,0xff} 
 
-
+#define TEXTBOX_ERR_NOTALLOWED 0xf
+#define TEXTBOX_ERR_NOTINITED  0xff
 typedef struct {
 	char EnableNumbers:1;
 	char EnbleCharctures:1;
 	char Password:1;
+	char Inited: 1;
 } TickTextBoxFlags;
 
 typedef struct {
@@ -52,6 +54,7 @@ char ButtonExtended_ctx  (const char* text,int x , int y ,int w , int h ,Vec4c d
 
 
 void InitTextBoxData(TextBoxData* tbd,u32 maxsize);
+void FreeTextBoxData(TextBoxData* tbd);
 
 char TextBox            (int x , int y , int w,int h/*0 or-1 for default*/,   TextBoxData* tbd);
 char TextBox_ctx        (int x , int y , int w , int h/*0 or-1 for default*/, TextBoxData* tbd,TickContext*ctx);

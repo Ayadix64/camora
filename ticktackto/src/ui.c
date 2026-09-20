@@ -214,13 +214,27 @@ void InitTextBoxData(TextBoxData* tbd,u32 maxsize){
 	tbd->size=1024;
 	tbd->pos=0;
 	tbd->maxsize=maxsize?maxsize:-1;
-	tbd->flags=(TickTextBoxFlags){.EnableNumbers=1,.EnbleCharctures=1};
+	tbd->flags=(TickTextBoxFlags){.EnableNumbers=1,.EnbleCharctures=1,.Password=0,.Inited=1};
 	tbd->xoffset=0;
 	tbd->data=(char*)malloc(tbd->size);
 	tbd->usedsize=0;
 	memset(tbd->data, 0, tbd->size);
+
 }
 
+
+void FreeTextBoxData(TextBoxData* tbd){
+	if(tbd->flags.Inited){
+		tbd->size=0;
+		tbd->pos=0;
+		tbd->maxsize=0;
+		tbd->flags=(TickTextBoxFlags){.EnableNumbers=1,.EnbleCharctures=1,.Password=0,.Inited=0};
+		tbd->xoffset=0;
+		tbd->usedsize=0;
+		free(tbd->data);
+		tbd->data = NULL;
+	}
+}
 char TextBox            (int x , int y , int w,int h/*0 or-1 for default*/,   TextBoxData* tbd)
 {
 	return TextBoxExtended_ctx(x, y, w, h, tbd, g_defaultBackgroundColor, g_defaultHoverColor, g_defaultSlecetColor, (Vec4c){255,255,255,255},g_defaultFontColor,
@@ -265,6 +279,10 @@ char TextBoxExtended    (int x , int y , int w , int h, TextBoxData* tbd, Vec4c 
 
 char TextBoxExtended_ctx(int x , int y , int w , int h, TextBoxData* tbd, Vec4c bg, Vec4c hbg , Vec4c sbg, Vec4c cursurCl,Vec4c tc,TickFont font, u32 xpadd, u32 ypadd,TickContext*ctx)
 {
+	
+	if(!tbd->flags.Inited){
+		return TEXTBOX_ERR_NOTALLOWED;
+	}
 	char preased = false;
 	bool highlited=false;
 	bool slected = IsSlected(ctx);
@@ -314,7 +332,7 @@ char TextBoxExtended_ctx(int x , int y , int w , int h, TextBoxData* tbd, Vec4c 
 	
 	if(slected){
 		if((u64)(glfwGetTime()*4.0)%2){ //aka; flicker evry half a secend
-			DrawRectangel_ctx(x+15+curserpos, y+ (h-font.linegap)/2 - 2, xpadd, font.linegap+4, cursurCl,ctx);
+		DrawRectangel_ctx(x+15+curserpos, y+ (h-font.linegap)/2 - 2, xpadd, font.linegap+4, cursurCl,ctx);
 		}	
 	}else {
 		DrawRectangel_ctx(x+15+curserpos, y+ (h-font.linegap)/2 - 2, xpadd, font.linegap+4, cursurCl,ctx);
@@ -328,16 +346,21 @@ char TextBoxExtended_ctx(int x , int y , int w , int h, TextBoxData* tbd, Vec4c 
 	u32 keypreased = GetLastKey_ctx(ctx);
 
 	if((keypreased>=32 || keypreased=='\t') && tbd->size < tbd->maxsize && slected){
-		size_t sz=tbd->size,usz=tbd->usedsize;
-		tbd->data=(char*)PushChar(keypreased, tbd->pos, &sz, (size_t*)&usz, tbd->data);
-		tbd->size=sz;
-		tbd->usedsize=usz;
-		tbd->pos++;
-		u32 cw;
-		GetFontCharDemensions(keypreased,font, &cw, 0);
-		if(curserpos+cw+30> w){
+		if((tbd->flags.EnableNumbers   && keypreased >= '0' && keypreased <= '9')||
+		   (tbd->flags.EnbleCharctures && ( keypreased <= '0' || keypreased >= '9'))){
+			size_t sz=tbd->size,usz=tbd->usedsize;
+			tbd->data=(char*)PushChar(keypreased, tbd->pos, &sz, (size_t*)&usz, tbd->data);
+			tbd->size=sz;
+			tbd->usedsize=usz;
+			tbd->pos++;
+			u32 cw;
+			GetFontCharDemensions(keypreased,font, &cw, 0);
+			if(curserpos+cw+30> w){
 
-			tbd->xoffset+=cw+xpadd;
+				tbd->xoffset+=cw+xpadd;
+			}
+		}else {
+			return TEXTBOX_ERR_NOTALLOWED;
 		}
 	}else if(GetKeyPressed_ctx(GLFW_KEY_BACKSPACE,ctx) && tbd->pos&& slected){
 		tbd->pos--;

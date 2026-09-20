@@ -84,7 +84,7 @@ typedef struct {
 
 
 #ifdef __cplusplus
-extern "C"{  //To C++ or not to C++, that is the quation
+extern "C"{
 #endif
 
 

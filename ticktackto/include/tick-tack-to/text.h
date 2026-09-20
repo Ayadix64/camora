@@ -29,8 +29,8 @@ TickFont GetDefaultFont();
 
 TickFont LoadFont(const char* filen,u32 scale);
 TickFont LoadFont_ctx(const char* filen,u32 scale,TickContext* ctx);
-TickFont LoadMemFont(void* fontData, u32 size, u32 scale );
-TickFont LoadMemFont_ctx(void* fontData,u32 size, u32 scale ,TickContext* ctx);
+TickFont LoadFontMem(void* fontData, u32 size, u32 scale );
+TickFont LoadFontMem_ctx(void* fontData,u32 size, u32 scale ,TickContext* ctx);
 
 
 void DeleteFont(TickFont*font);
