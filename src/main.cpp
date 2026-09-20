@@ -1,9 +1,12 @@
+#include "conf.hpp"
 #include <atomic>
 #include <cmath>
+#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <pthread.h>
 #include <stdio.h>
+#include <string>
 #include <thread>
 
 
@@ -20,15 +23,18 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
 
-
-/*#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/videoio.hpp>
-#include <opencv2/highgui.hpp>*/
 #define min(x,y) x>y?y:x
 #define max(x,y) x>y?x:y
 #define pos_or_zeor(x) x<0?0:x
 #define cube(x) (x)*(x) // yeah..
+#define CONFIG_FILE "camora.conf"
+
+struct {
+        u32 defCamera = 0;
+        float dim = 1.0;
+        float animationSpeed = 1.0;
+} parameters;
+
 
 void *imagebuffer = NULL;
 
@@ -62,7 +68,7 @@ bool snapButton(void)
         static unsigned int raduis = 30;
         static bool isHover = false;
         static double snaptimer = 0.0;
-        const float animationduration = 0.1;
+        const float animationduration = 0.1*(1.0/parameters.animationSpeed);
         bool isClicked = false;
         float x  = GetWindowW()/2.0, y = GetWindowH() -40;
 
@@ -92,9 +98,9 @@ bool snapButton(void)
         return isClicked;
 }
 
-void Menu(){
+void Menu(void){
         static bool showMenu = false;
-        const  double animationDur = 0.2f;
+        const  double animationDur = 0.2f* (1.0f/parameters.animationSpeed);
         static double animationEnd = 0.0;
         static int goUp= 0.0; //up ? down?
         static float y = GetWindowH();
@@ -117,6 +123,33 @@ void Menu(){
 }
 
 
+void getParameters(void)
+{
+        std::string conf;
+        if(readConf(CONFIG_FILE, "camera", conf) ){
+                parameters.defCamera = atoi(conf.c_str());
+        }
+        if(readConf(CONFIG_FILE, "dim", conf) ){
+                parameters.dim = atof(conf.c_str());
+        }
+        if(readConf(CONFIG_FILE, "animation", conf) ){
+                parameters.animationSpeed = atof(conf.c_str());
+        }
+
+}
+void SetParameters(void)
+{
+
+        std::string conf;
+        writeConf(CONFIG_FILE, "camera", std::to_string(parameters.defCamera));
+
+        writeConf(CONFIG_FILE, "dim", std::to_string(parameters.dim));
+
+        writeConf(CONFIG_FILE, "animation", std::to_string(parameters.animationSpeed));
+
+
+}
+
 int main(){
         if(!glfwInit()){
 		return 1;
@@ -129,7 +162,7 @@ int main(){
 
 
 	TickInit(window); //And the
-
+	getParameters();
 
 	char check=0;
 	float slid=0.0;
@@ -196,5 +229,6 @@ int main(){
 	}
 	free(buff);
 	glfwTerminate();
+	SetParameters();
 	return 0;
 }
