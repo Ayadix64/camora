@@ -110,7 +110,6 @@ bool snapButton(void)
         }
         if(isClicked){
                 snaptimer = glfwGetTime() + animationduration;
-                printf("clicked\n");
         }
 
         DrawCircle(x,y, raduis, 360, {245,245,240,255});
@@ -128,12 +127,16 @@ bool Menu(void){
         static float y = GetWindowH();
         static TextBoxData tbd={0};
         static float dim = 0.0;
+
         if(dim==0.0){
                 dim = parameters.dim/2;
         }
         if(!tbd.data){
                 InitTextBoxData(&tbd, 0);
                 tbd.flags.EnbleCharctures=0;
+                sprintf(tbd.data, "%d", min(parameters.defCamera,999));
+                tbd.usedsize = strlen(tbd.data);
+                tbd.pos = tbd.usedsize;
         }
         if(showMenu || animationEnd > glfwGetTime() ){
                 float yy = (float)GetWindowH()- y*(4*(float)GetWindowH()/5);
@@ -152,7 +155,7 @@ bool Menu(void){
                 if(tbd.size){
                         parameters.defCamera = atoi(tbd.data);
                 }
-                Slider(20, yy+80, 200, &dim);
+                Slider(20, yy+100, 400, &dim);
                 parameters.dim = dim*2.0;
         }
         if(glfwGetTime() > animationEnd && animationEnd > 0.0){

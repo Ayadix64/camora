@@ -5,7 +5,7 @@
 #include <string>
 
 
-#define min(x,y) x>y?y:x
+#define min(x,y) x<y?x:y
 #define max(x,y) x>y?x:y
 #define pos_or_zeor(x) x<0?0:x
 #define cube(x) (x)*(x) // yeah..
