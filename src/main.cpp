@@ -1,3 +1,4 @@
+#include <ctime>
 #define MAIN
 #include "conf.hpp"
 #include <atomic>
@@ -20,7 +21,8 @@
 
 #include "../ticktackto/include/tick-tack-to.h"
 
-#include <opencv2/core/mat.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
 
@@ -53,8 +55,24 @@ void captureThread( void* buff,
         	        printf("ERROR! blank frame grabbed\n");
         	}
                 pthread_mutex_unlock(capmutex);
-                for(int i = 0 ; i < frame.rows * frame.cols * 3; ++i ){
-                        frame.data[i]*= parameters.dim;
+                for(int i = 0 ; i < frame.rows * frame.cols*3 ; i+=3 ){
+                        if( ((int)frame.data[i] * parameters.dim) <= 0xff ){
+                                frame.data[i] *= parameters.dim;
+                        }else {
+                                frame.data[i] = 0xff;
+                        }
+
+                        if( ((int)frame.data[i+1] * parameters.dim) <= 0xff ){
+                                frame.data[i+1] *= parameters.dim;
+                        }else {
+                                frame.data[i+1] = 0xff;
+                        }
+
+                        if( ((int)frame.data[i+2] * parameters.dim) <= 0xff ){
+                                frame.data[i+2] *= parameters.dim;
+                        }else {
+                                frame.data[i+2] = 0xff;
+                        }
                 }
                 pthread_mutex_lock(buffmut);
                 memcpy(buff, frame.data, frame.cols*frame.rows*3);
@@ -156,17 +174,17 @@ bool Menu(void){
 void getParameters(void)
 {
         std::string conf;
-        if(readConf(CONFIG_FILE, "camera", conf) ){
+        if(!readConf(CONFIG_FILE, "camera", conf) ){
                 parameters.defCamera = atoi(conf.c_str());
         }
-        if(readConf(CONFIG_FILE, "dim", conf) ){
+        if(!readConf(CONFIG_FILE, "dim", conf) ){
                 parameters.dim = atof(conf.c_str());
         }
-        if(readConf(CONFIG_FILE, "animation", conf) ){
+        if(!readConf(CONFIG_FILE, "animation", conf) ){
                 parameters.animationSpeed = atof(conf.c_str());
         }
 
-        if(readConf(CONFIG_FILE, "pictors", conf) ){
+        if(!readConf(CONFIG_FILE, "pictors", conf) ){
                 parameters.pictorsLocation = conf;
         }
 }
@@ -231,7 +249,8 @@ int main()
 	        printf("ERROR! blank frame grabbed\n");
 	}
 
-	TickTexture2D videotexture = LoadTexture(frame.data, frame.cols, frame.rows, 3);
+	memcpy(buff, frame.data, frame.rows*frame.cols*3);
+	TickTexture2D videotexture = LoadTexture(buff, frame.cols, frame.rows, 3);
 
 
 	std::thread capthr= std::thread(captureThread,buff,&buffmut ,&cap, &capmutex, &sholdclose,&frame);
@@ -252,7 +271,17 @@ int main()
 		);
 		if(snapButton() && !Menu())
 		{
+		        pthread_mutex_lock(&buffmut);
+		        frame.data = (uchar*)buff;
 
+			struct timeval time;
+			cv::cvtColor(frame, frame,cv::COLOR_BGR2RGB);
+
+			gettimeofday(&time,0);
+			std::string timestr = ctime(&time.tv_sec);
+		        timestr.pop_back();
+			cv::imwrite(parameters.pictorsLocation + "/" + timestr +":"+std::to_string(time.tv_usec)+".jpeg" , frame);
+			pthread_mutex_unlock(&buffmut);
 		}else{
 		        Menu();
 		}
