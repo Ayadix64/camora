@@ -1,4 +1,5 @@
 #include <ctime>
+#include <execution>
 #define MAIN
 #include "conf.hpp"
 #include <atomic>
@@ -126,10 +127,12 @@ bool Menu(void){
         static int goUp= 0.0; //up ? down?
         static float y = GetWindowH();
         static TextBoxData tbd={0};
+        static TextBoxData tbdpath={0};
         static float dim = 0.0;
-
+        static float animation = 0.0;
         if(dim==0.0){
                 dim = parameters.dim/2;
+                animation = parameters.animationSpeed / 2.0;
         }
         if(!tbd.data){
                 InitTextBoxData(&tbd, 0);
@@ -137,6 +140,15 @@ bool Menu(void){
                 sprintf(tbd.data, "%d", min(parameters.defCamera,999));
                 tbd.usedsize = strlen(tbd.data);
                 tbd.pos = tbd.usedsize;
+
+                InitTextBoxData(&tbdpath, 0);
+                if(parameters.pictorsLocation.size() > tbdpath.maxsize){
+                        tbdpath.data = (char*)realloc(tbdpath.data, parameters.pictorsLocation.size());
+                        tbdpath.maxsize = parameters.pictorsLocation.size();
+                }
+                memcpy(tbdpath.data, parameters.pictorsLocation.data(), parameters.pictorsLocation.size());
+                tbdpath.usedsize = strlen(tbdpath.data);
+                tbdpath.pos = tbdpath.usedsize;
         }
         if(showMenu || animationEnd > glfwGetTime() ){
                 float yy = (float)GetWindowH()- y*(4*(float)GetWindowH()/5);
@@ -155,8 +167,29 @@ bool Menu(void){
                 if(tbd.size){
                         parameters.defCamera = atoi(tbd.data);
                 }
-                Slider(20, yy+100, 400, &dim);
+
+                GetTextDemensions("animation: ", &w, 0);
+                //GetTextDemensions("light: ", &w, 0);
+                DrawText("light: ", 20, yy+100-4, {255,255,255,255});
+                Slider(20+w, yy+100, 400, &dim);
                 parameters.dim = dim*2.0;
+                char dimpresent[5];
+                sprintf(dimpresent,"%d%%",min((int)(parameters.dim * 100),200));
+                DrawText(dimpresent, 440+w,yy+100-4 , {255,255,255,255});
+
+                DrawText("animation: ", 20, yy+140-4, {255,255,255,255});
+                Slider(20+w, yy+140, 400, &animation);
+                sprintf(dimpresent,"%d%%",min((int)(parameters.animationSpeed * 100),200));
+                DrawText(dimpresent, 440+w,yy+140-4 , {255,255,255,255});
+                parameters.animationSpeed = animation*2.0;
+
+
+                GetTextDemensions("picture path: ", &w, 0);
+                DrawText("picture path: ", 20, yy+180, {255,255,255,255});
+                if(TextBoxColor(20+w, yy+180-15, 400, 0, &tbdpath, {15,15,15,255}, {25,25,25,255}, {25,25,25,255}, {200,200,240,255}, {255,255,255,255})&1)
+                {
+                        parameters.pictorsLocation = std::string(tbdpath.data);
+                }
         }
         if(glfwGetTime() > animationEnd && animationEnd > 0.0){
                 animationEnd=0.0;
@@ -228,7 +261,7 @@ int main()
 	TickFont opensensfont =  LoadFontMem((void*)font, sizeof(font), 20);
 	SetDefaultFont(&opensensfont);
 
-	int camera = 0;
+	int camera = parameters.defCamera;
 	cv::Mat frame;
 	cv::VideoCapture cap;
 	pthread_mutex_t capmutex;
@@ -288,7 +321,13 @@ int main()
 		}else{
 		        Menu();
 		}
-
+		if(parameters.defCamera != camera)
+		{
+		        pthread_mutex_lock(&capmutex);
+			camera= parameters.defCamera;
+			cap.open(camera);
+			pthread_mutex_unlock(&capmutex);
+		}
 		TickRendre();
 		glfwSwapBuffers(window);
 		glfwPollEvents();

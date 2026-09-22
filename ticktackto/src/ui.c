@@ -343,8 +343,10 @@ char TextBoxExtended_ctx(int x , int y , int w , int h, TextBoxData* tbd, Vec4c 
 		//TODO
 	}
 	
+	if(!slected){return preased;}
+	
 	u32 keypreased = GetLastKey_ctx(ctx);
-
+	
 	if((keypreased>=32 || keypreased=='\t') && tbd->size < tbd->maxsize && slected){
 		if((tbd->flags.EnableNumbers   && keypreased >= '0' && keypreased <= '9')||
 		   (tbd->flags.EnbleCharctures && ( keypreased <= '0' || keypreased >= '9'))){
